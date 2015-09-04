@@ -1,0 +1,157 @@
+#!/bin/bash
+#
+# Utility to create new void-packages
+# Written by Enguerrand de Rochefort <voidlinux@rochefort.de>
+#
+# General configuration
+VOID_PACKAGES_LOCATION=$HOME/void-packages
+BUILD_STYLES_LOCATION=$VOID_PACKAGES_LOCATION/common/build-style
+MAINTAINER="Enguerrand de Rochefort <voidlinux@rochefort.de>"
+
+####################################################################################
+# Sanity Checks
+####################################################################################
+
+if [ ! -d $VOID_PACKAGES_LOCATION ];then
+cat << EOF
+Directory $VOID_PACKAGES_LOCATION missing!
+Please adjust the variable VOID_PACKAGES_LOCATION in the
+header of this script!
+EOF
+exit -1
+fi
+
+## TODO: Check void-packages directory structure?
+
+if [ $# -ne 1 ];then
+    echo "Usage: $(basename $0) <PKG NAME>"
+    exit -1
+fi
+
+PKG_NAME=$1
+if [ -d $PKG_NAME ];then
+    echo "Template for package $PKG_NAME already exists!"
+    exit -1
+fi
+
+####################################################################################
+# Functions to guess sane defaults
+####################################################################################
+function guess_wrksrc() {
+    local build_style=$1
+    case "$build_style" in 
+        'perl-module')
+            WRKSRC='${pkgname#*-}-${version}'
+            ;;
+        *)
+            WRKSRC='${pkgname}-${version}'
+    esac
+}
+
+function guess_hostmakedepends() {
+    local build_style=$1
+    case "$build_style" in 
+        'perl-module')
+            HOSTMAKEDEPENDS='perl'
+            ;;
+        *)
+            HOSTMAKEDEPENDS=''
+    esac
+}
+
+function guess_makedepends() {
+    local build_style=$1
+    case "$build_style" in 
+        'perl-module')
+            MAKEDEPENDS='perl'
+            ;;
+        *)
+            MAKEDEPENDS=''
+    esac
+}
+
+function guess_depends() {
+    local build_style=$1
+    case "$build_style" in 
+        'perl-module')
+            DEPENDS='perl'
+            ;;
+        *)
+            DEPENDS=''
+    esac
+}
+
+function guess_distfiles() {
+    local src_link=$1
+    local pkg_name=$2
+    local pkg_version=$3
+    
+    DISTFILES=$(echo $src_link | \
+            sed -e "s#$pkg_name#\${pkgname}#g" | \
+            sed -e "s#$pkg_version#\${version}#g" | \
+            sed -re "s#http://(www.|)cpan.(perl.|)org/modules/by-module#\$CPAN_SITE#g" | \
+            sed -re "s#http://ftp.debian.org/debian/pool#\$DEBIAN_SITE#g" | \
+            sed -re "s#http://(www.|)freedesktop.org/software#\$FREEDESKTOP_SITE#g" | \
+            sed -re "s#http://ftp.gnome.org/pub/GNOME/sources#\$GNOME_SITE#g" | \
+            sed -re "s#http://mirrors.kernel.org/gnu#\$GNU_SITE#g" | \
+            sed -re "s#http://(www.|)kernel.org/pub/linux#\$KERNEL_SITE#g" | \
+            sed -re "s#http://ftp.mozilla.org/pub/mozilla.org#\$MOZILLA_SITE#g" | \
+            sed -re "s#http://(www.|)download.savannah.nongnu.org/releases#\$NONGNU_SITE#g" | \
+            sed -re "s#http://pypi.python.org/packages/source#\$PYPI_SITE#g" | \
+            sed -re "s#http://downloads.sourceforge.net/sourceforge#\$SOURCEFORGE_SITE#g" | \
+            sed -re "s#http://(www.|)archive.ubuntu.com/ubuntu/pool#\$UBUNTU_SITE#g" | \
+            sed -re "s#http://xorg.freedesktop.org/wiki/#\$XORG_HOME#g" | \
+            sed -re "s#http://xorg.freedesktop.org/releases/individual#\$XORG_SITE#g")
+}
+
+####################################################################################
+# Get User Input
+####################################################################################
+
+read -p "Version: " PKG_VERSION
+read -p "Source Link: " SRC_LINK
+declare -A BUILD_STYLES
+INDEX=1
+echo "Choose build style: "
+for FILE in $BUILD_STYLES_LOCATION/*; do
+    SCRIPT=${FILE##*/}
+    if [ "$SCRIPT" == "README" ];then
+        continue
+    fi
+    STYLE=${SCRIPT%.*}
+    BUILD_STYLES[$INDEX]=$STYLE
+    echo ${INDEX}") "${STYLE}
+    INDEX=$[ $INDEX + 1 ]
+done
+read -p "Selection: " SELECTED_STYLE_INDEX
+SELECTED_STYLE=${BUILD_STYLES[$SELECTED_STYLE_INDEX]}
+CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
+PKGSRC_DIR=$VOID_PACKAGES_LOCATION/srcpkgs/$PKG_NAME
+
+guess_wrksrc $SELECTED_STYLE
+guess_hostmakedepends $SELECTED_STYLE
+guess_makedepends $SELECTED_STYLE
+guess_depends $SELECTED_STYLE
+guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION
+
+mkdir -p $PKGSRC_DIR
+cat > $PKGSRC_DIR/template << EOF
+# Template build file for '$PKG_NAME'.
+pkgname=$PKG_NAME
+version=$PKG_VERSION
+revision=1
+wrksrc="${WRKSRC}"
+build_style=$SELECTED_STYLE
+hostmakedepends="$HOSTMAKEDEPENDS"
+makedepends="$MAKEDEPENDS"
+depends="$DEPENDS"
+short_desc=''
+maintainer="$MAINTAINER"
+homepage=""
+license=""
+distfiles="$DISTFILES"
+checksum=$CHECKSUM
+noarch=
+EOF
+
+${EDITOR:-vi} $PKGSRC_DIR/template
