@@ -1,9 +1,16 @@
 #!/bin/bash
 #
-# Utility to create new void-packages
-# Written by Enguerrand de Rochefort <voidlinux@rochefort.de>
+# xbps-tpl - Helper script to create new templates for XBPS
 #
+# Written by Enguerrand de Rochefort <voidlinux@rochefort.de>
+# Licensed under the Simplified BSD license (2 clause)
+#
+####################################################################################
+
+####################################################################################
 # General configuration
+####################################################################################
+
 VOID_PACKAGES_LOCATION=$HOME/void-packages
 BUILD_STYLES_LOCATION=$VOID_PACKAGES_LOCATION/common/build-style
 MAINTAINER="Enguerrand de Rochefort <voidlinux@rochefort.de>"
@@ -37,6 +44,7 @@ fi
 ####################################################################################
 # Functions to guess sane defaults
 ####################################################################################
+
 function guess_wrksrc() {
     local build_style=$1
     case "$build_style" in 
@@ -125,6 +133,11 @@ for FILE in $BUILD_STYLES_LOCATION/*; do
 done
 read -p "Selection: " SELECTED_STYLE_INDEX
 SELECTED_STYLE=${BUILD_STYLES[$SELECTED_STYLE_INDEX]}
+
+####################################################################################
+# Process User Input to prepare Template Creation
+####################################################################################
+
 CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
 PKGSRC_DIR=$VOID_PACKAGES_LOCATION/srcpkgs/$PKG_NAME
 
@@ -133,6 +146,10 @@ HOSTMAKEDEPENDS=$(guess_hostmakedepends $SELECTED_STYLE)
 MAKEDEPENDS=$(guess_makedepends $SELECTED_STYLE)
 DEPENDS=$(guess_depends $SELECTED_STYLE)
 DISTFILES=$(guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION)
+
+####################################################################################
+# Build Template
+####################################################################################
 
 mkdir -p $PKGSRC_DIR
 cat > $PKGSRC_DIR/template << EOF
@@ -153,5 +170,9 @@ distfiles="$DISTFILES"
 checksum=$CHECKSUM
 noarch=
 EOF
+
+####################################################################################
+# Finally open it in Editor
+####################################################################################
 
 ${EDITOR:-vi} $PKGSRC_DIR/template
