@@ -14,6 +14,8 @@
 VOID_PACKAGES_LOCATION=$HOME/void-packages
 BUILD_STYLES_LOCATION=$VOID_PACKAGES_LOCATION/common/build-style
 MAINTAINER="Enguerrand de Rochefort <voidlinux@rochefort.de>"
+TEMP_FOLDER=/tmp/xbps-tpl-src.tmp
+INSPECT_SOURCES="y"
 
 ####################################################################################
 # Sanity Checks
@@ -135,13 +137,58 @@ read -p "Selection: " SELECTED_STYLE_INDEX
 SELECTED_STYLE=${BUILD_STYLES[$SELECTED_STYLE_INDEX]}
 
 ####################################################################################
+# Get sources and let user inspect them
+####################################################################################
+
+if [ "x${INSPECT_SOURCES}" == "xy" ];then
+    mkdir -p $TEMP_FOLDER
+    cd $TEMP_FOLDER
+    rm -rf ./*
+    wget $SRC_LINK
+    TARBALL=${SRC_LINK##*\/}
+    CHECKSUM=$(sha256sum $TARBALL | cut -d' ' -f 1)
+    EXTENSION=${TARBALL##*.}
+    COMPRESSION_IDENTIFIED="y"
+    case "$EXTENSION" in
+        'gz')
+            TAROPT='z'
+            ;;
+        'xz')
+            TAROPT='J'
+            ;;
+        'bzip2')
+            TAROPT='j'
+            ;;
+        *)
+            COMPRESSION_IDENTIFIED="n"  
+            ;;
+    esac
+    if [ "x${COMPRESSION_IDENTIFIED}" == "xy" ];then
+        tar -xv${TAROPT}f $TARBALL
+        EXTRACT_DIR=$(echo $TARBALL | sed -e 's/.tar.${EXTENSION}//g')
+        if [ ! -d $EXTRACT_DIR ];then
+            EXTRACT_DIR=$(ls | grep -v $TARBALL)
+        fi    
+        if [ -d $EXTRACT_DIR ];then
+            WRKSRC=$EXTRACT_DIR
+        fi
+    fi
+    echo ""
+    echo "You will now be dropped into a shell to inspect the sources"
+    echo "Press ctrl-D to proceed"
+    echo ""
+    /bin/bash
+else
+    CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
+fi
+
+####################################################################################
 # Process User Input to prepare Template Creation
 ####################################################################################
 
-CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
 PKGSRC_DIR=$VOID_PACKAGES_LOCATION/srcpkgs/$PKG_NAME
 
-WRKSRC=$(guess_wrksrc $SELECTED_STYLE)
+WRKSRC=${WRKSRC:=$(guess_wrksrc $SELECTED_STYLE)}
 HOSTMAKEDEPENDS=$(guess_hostmakedepends $SELECTED_STYLE)
 MAKEDEPENDS=$(guess_makedepends $SELECTED_STYLE)
 DEPENDS=$(guess_depends $SELECTED_STYLE)
