@@ -41,10 +41,10 @@ function guess_wrksrc() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
-            WRKSRC='${pkgname#*-}-${version}'
+            echo '${pkgname#*-}-${version}'
             ;;
         *)
-            WRKSRC='${pkgname}-${version}'
+            echo '${pkgname}-${version}'
     esac
 }
 
@@ -52,10 +52,10 @@ function guess_hostmakedepends() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
-            HOSTMAKEDEPENDS='perl'
+            echo 'perl'
             ;;
         *)
-            HOSTMAKEDEPENDS=''
+            echo ''
     esac
 }
 
@@ -63,10 +63,10 @@ function guess_makedepends() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
-            MAKEDEPENDS='perl'
+            echo 'perl'
             ;;
         *)
-            MAKEDEPENDS=''
+            echo ''
     esac
 }
 
@@ -74,10 +74,10 @@ function guess_depends() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
-            DEPENDS='perl'
+            echo 'perl'
             ;;
         *)
-            DEPENDS=''
+            echo ''
     esac
 }
 
@@ -86,7 +86,7 @@ function guess_distfiles() {
     local pkg_name=$2
     local pkg_version=$3
     
-    DISTFILES=$(echo $src_link | \
+    echo $src_link | \
             sed -e "s#$pkg_name#\${pkgname}#g" | \
             sed -e "s#$pkg_version#\${version}#g" | \
             sed -re "s#http://(www.|)cpan.(perl.|)org/modules/by-module#\$CPAN_SITE#g" | \
@@ -101,7 +101,7 @@ function guess_distfiles() {
             sed -re "s#http://downloads.sourceforge.net/sourceforge#\$SOURCEFORGE_SITE#g" | \
             sed -re "s#http://(www.|)archive.ubuntu.com/ubuntu/pool#\$UBUNTU_SITE#g" | \
             sed -re "s#http://xorg.freedesktop.org/wiki/#\$XORG_HOME#g" | \
-            sed -re "s#http://xorg.freedesktop.org/releases/individual#\$XORG_SITE#g")
+            sed -re "s#http://xorg.freedesktop.org/releases/individual#\$XORG_SITE#g"
 }
 
 ####################################################################################
@@ -128,11 +128,11 @@ SELECTED_STYLE=${BUILD_STYLES[$SELECTED_STYLE_INDEX]}
 CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
 PKGSRC_DIR=$VOID_PACKAGES_LOCATION/srcpkgs/$PKG_NAME
 
-guess_wrksrc $SELECTED_STYLE
-guess_hostmakedepends $SELECTED_STYLE
-guess_makedepends $SELECTED_STYLE
-guess_depends $SELECTED_STYLE
-guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION
+WRKSRC=$(guess_wrksrc $SELECTED_STYLE)
+HOSTMAKEDEPENDS=$(guess_hostmakedepends $SELECTED_STYLE)
+MAKEDEPENDS=$(guess_makedepends $SELECTED_STYLE)
+DEPENDS=$(guess_depends $SELECTED_STYLE)
+DISTFILES=$(guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION)
 
 mkdir -p $PKGSRC_DIR
 cat > $PKGSRC_DIR/template << EOF
