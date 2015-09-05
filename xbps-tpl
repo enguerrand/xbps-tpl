@@ -64,6 +64,9 @@ function guess_hostmakedepends() {
         'perl-module')
             echo 'perl'
             ;;
+        'perl-ModuleBuild')
+            echo 'perl perl-Module-Build'
+            ;;
         *)
             echo ''
     esac
@@ -75,6 +78,9 @@ function guess_makedepends() {
         'perl-module')
             echo 'perl'
             ;;
+        'perl-ModuleBuild')
+            echo 'perl perl-Module-Build'
+            ;;
         *)
             echo ''
     esac
@@ -84,6 +90,9 @@ function guess_depends() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
+            echo 'perl'
+            ;;
+        'perl-ModuleBuild')
             echo 'perl'
             ;;
         *)
@@ -112,6 +121,22 @@ function guess_distfiles() {
             sed -re "s#http://(www.|)archive.ubuntu.com/ubuntu/pool#\$UBUNTU_SITE#g" | \
             sed -re "s#http://xorg.freedesktop.org/wiki/#\$XORG_HOME#g" | \
             sed -re "s#http://xorg.freedesktop.org/releases/individual#\$XORG_SITE#g"
+}
+
+#### TODO: Other architectures! ####
+function guess_architecture_option(){
+    local src_link=$1
+    local tarball=${src_link##*\/}
+    case "$tarball" in
+        *amd64*)
+            echo only_for_archs=\"x86_64\"
+            ;;
+        *x86_64*)
+            echo only_for_archs=\"x86_64\"
+            ;;
+        *) 
+            echo "noarch=yes"
+    esac
 }
 
 ####################################################################################
@@ -144,6 +169,7 @@ if [ "x${INSPECT_SOURCES}" == "xy" ];then
     mkdir -p $TEMP_FOLDER
     cd $TEMP_FOLDER
     rm -rf ./*
+    echo "Fetching source, please wait..."
     wget $SRC_LINK
     TARBALL=${SRC_LINK##*\/}
     CHECKSUM=$(sha256sum $TARBALL | cut -d' ' -f 1)
@@ -169,8 +195,11 @@ if [ "x${INSPECT_SOURCES}" == "xy" ];then
         if [ ! -d $EXTRACT_DIR ];then
             EXTRACT_DIR=$(ls | grep -v $TARBALL)
         fi    
-        if [ -d $EXTRACT_DIR ];then
-            WRKSRC=$EXTRACT_DIR
+        # While we are at it, guess the wrksrc
+        if [ -d $EXTRACT_DIR ];then 
+            WRKSRC=$(echo $EXTRACT_DIR | \
+                sed -e "s#$PKG_NAME#\${pkgname}#g" | \
+                sed -e "s#$PKG_VERSION#\${version}#g")
         fi
     fi
     echo ""
@@ -179,6 +208,7 @@ if [ "x${INSPECT_SOURCES}" == "xy" ];then
     echo ""
     /bin/bash
 else
+    echo "Fetching source to compute sha256sum, please wait..."
     CHECKSUM=$(curl -s $SRC_LINK | sha256sum | cut -d' ' -f 1)
 fi
 
@@ -193,6 +223,7 @@ HOSTMAKEDEPENDS=$(guess_hostmakedepends $SELECTED_STYLE)
 MAKEDEPENDS=$(guess_makedepends $SELECTED_STYLE)
 DEPENDS=$(guess_depends $SELECTED_STYLE)
 DISTFILES=$(guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION)
+ARCH_OPTION=$(guess_architecture_option $SRC_LINK)
 
 ####################################################################################
 # Build Template
@@ -215,7 +246,7 @@ homepage=""
 license=""
 distfiles="$DISTFILES"
 checksum=$CHECKSUM
-noarch=
+$ARCH_OPTION
 EOF
 
 ####################################################################################
