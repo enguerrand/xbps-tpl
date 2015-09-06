@@ -62,10 +62,10 @@ function guess_hostmakedepends() {
     local build_style=$1
     case "$build_style" in 
         'perl-module')
-            echo 'perl'
+            echo ''
             ;;
         'perl-ModuleBuild')
-            echo 'perl perl-Module-Build'
+            echo ''
             ;;
         *)
             echo ''
@@ -123,19 +123,17 @@ function guess_distfiles() {
             sed -re "s#http://xorg.freedesktop.org/releases/individual#\$XORG_SITE#g"
 }
 
-#### TODO: Other architectures! ####
 function guess_architecture_option(){
-    local src_link=$1
-    local tarball=${src_link##*\/}
-    case "$tarball" in
-        *amd64*)
-            echo only_for_archs=\"x86_64\"
+    local build_style=$1
+    case "$build_style" in 
+        'perl-module')
+            echo 'noarch=yes'
             ;;
-        *x86_64*)
-            echo only_for_archs=\"x86_64\"
+        'perl-ModuleBuild')
+            echo 'noarch=yes'
             ;;
-        *) 
-            echo "noarch=yes"
+        *)
+            echo '#noarch=yes'
     esac
 }
 
@@ -223,7 +221,7 @@ HOSTMAKEDEPENDS=$(guess_hostmakedepends $SELECTED_STYLE)
 MAKEDEPENDS=$(guess_makedepends $SELECTED_STYLE)
 DEPENDS=$(guess_depends $SELECTED_STYLE)
 DISTFILES=$(guess_distfiles $SRC_LINK $PKG_NAME $PKG_VERSION)
-ARCH_OPTION=$(guess_architecture_option $SRC_LINK)
+ARCH_OPTION=$(guess_architecture_option $SELECTED_STYLE)
 
 ####################################################################################
 # Build Template
