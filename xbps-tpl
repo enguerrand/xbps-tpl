@@ -111,7 +111,7 @@ function guess_distfiles() {
             sed -re "s#http://(www.|)cpan.(perl.|)org/modules/by-module#\$CPAN_SITE#g" | \
             sed -re "s#http://ftp.debian.org/debian/pool#\$DEBIAN_SITE#g" | \
             sed -re "s#http://(www.|)freedesktop.org/software#\$FREEDESKTOP_SITE#g" | \
-            sed -re "s#http://ftp.gnome.org/pub/GNOME/sources#\$GNOME_SITE#g" | \
+            sed -re "s#http://ftp.gnome.org/pub/(GNOME|gnome)/sources#\$GNOME_SITE#g" | \
             sed -re "s#http://mirrors.kernel.org/gnu#\$GNU_SITE#g" | \
             sed -re "s#http://(www.|)kernel.org/pub/linux#\$KERNEL_SITE#g" | \
             sed -re "s#http://ftp.mozilla.org/pub/mozilla.org#\$MOZILLA_SITE#g" | \
