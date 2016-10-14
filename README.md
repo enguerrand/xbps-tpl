@@ -1,2 +1,2 @@
 # xbps-tpl
-Helper script to create new templates for XBPS
+Helper scripts to create new templates for XBPS
