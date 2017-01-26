@@ -17,7 +17,15 @@ XORG_SITE="http://xorg.freedesktop.org/releases/individual"
 CURL_OPTS="--location"
 function print_usage(){
     cat << EOF
-Usage: $(basename $0)" <template file>
+Usage: $(basename $0)" [options] <template file>
+
+Valid options are:
+    -d,--debug
+        print debug output
+    -h,--help
+        print this help
+    -k,--keep
+        keep downloaded files
 EOF
 }
 
@@ -27,15 +35,44 @@ function abort(){
     exit -1
 }
 
-if [ "x$1" == "x-h" ] || [ "x$1" == "x--help" ];then
-    print_usage
-    exit 0
-fi
-TEMPLATE_FILE=$1
+KEEP="n"
+while [ $# -gt 0 ];do
+    if [ "x$NO_OPTS" == "xy" ] && [[ "$1" =~ \-.* ]];then
+        ARGS+="$1 "
+    else
+        case $1 in 
+            '--')
+                NO_OPTS="y"
+                ;;
+            '-d'|'--debug')
+                set -xe
+                ;;
+            '-k'|'--keep')
+                KEEP="y"
+                ;;
+            '-h'|'--help')
+                print_usage
+                exit 0
+                ;;
+            *)
+                [ -z "$TEMPLATE_FILE" ] || abort "Too many arguments!"
+                TEMPLATE_FILE=$1
+                ;;
+        esac
+    fi
+    shift
+done
+
 [ -z "$TEMPLATE_FILE" ] && abort "Arguments missing!"
 [ -f "$TEMPLATE_FILE" ] || abort "File $TEMPLATE_FILE not found!"
 source <(grep -v '^ \|^configure\|^makedepends\|^hostmakedepends' "$TEMPLATE_FILE")
 for url in "$distfiles"; do
     echo "Requesting \"${url}\""
-    curl ${CURL_OPTS} $url | sha256sum
+    if [ "x${KEEP}" == "xy" ];then
+        FILENAME=${url##*/}
+        curl ${CURL_OPTS} $url -o ./$FILENAME 
+        sha256sum ./$FILENAME
+    else    
+        curl ${CURL_OPTS} $url | sha256sum
+    fi
 done
