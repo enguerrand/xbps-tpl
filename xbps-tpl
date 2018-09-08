@@ -32,7 +32,7 @@ fi
 
 ## TODO: Check void-packages directory structure?
 
-if [ $# -ne 1 ];then
+if [ $# -ne 1 ] || [ "x$1" == "x-h" ] || [ "x$1" == "x--help" ];then
     echo "Usage: $(basename $0) <PKG NAME>"
     exit -1
 fi
